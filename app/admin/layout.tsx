@@ -1,0 +1,94 @@
+import React from "react";
+import Link from "next/link";
+
+const navItems = [
+    { label: "Dashboard", href: "/admin/dashboard", icon: "◈" },
+    { label: "Tools", href: "/admin/dashboard/tools", icon: "⚙" },
+    { label: "Articles", href: "/admin/dashboard/articles", icon: "✍" },
+    { label: "Categories", href: "/admin/dashboard/categories", icon: "◉" },
+    { label: "Authors", href: "/admin/dashboard/authors", icon: "👤" },
+    { label: "Comparisons", href: "/admin/dashboard/comparisons", icon: "⇄" },
+];
+
+export default function AdminLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <div
+            style={{ backgroundColor: "#0a0a0a", minHeight: "100vh" }}
+            className="flex"
+        >
+            {/* Sidebar */}
+            <aside
+                style={{
+                    backgroundColor: "#111827",
+                    borderRight: "1px solid #1f2937",
+                    width: "240px",
+                    flexShrink: 0,
+                }}
+                className="flex flex-col min-h-screen"
+            >
+                {/* Logo */}
+                <div
+                    style={{ borderBottom: "1px solid #1f2937" }}
+                    className="px-6 py-5"
+                >
+                    <Link href="/admin/dashboard" className="text-white font-black text-lg">
+                        ToolsAQ
+                    </Link>
+                    <p style={{ color: "#6b7280" }} className="text-xs mt-0.5">
+                        Admin Panel
+                    </p>
+                </div>
+
+                {/* Nav */}
+                <nav className="flex-1 px-3 py-4 space-y-1">
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            style={{ color: "#9ca3af" }}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-white transition-colors"
+                        >
+                            <span>{item.icon}</span>
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+
+                {/* Bottom */}
+                <div
+                    style={{ borderTop: "1px solid #1f2937" }}
+                    className="px-3 py-4 space-y-1"
+                >
+                    <Link
+                        href="/"
+                        target="_blank"
+                        style={{ color: "#6b7280" }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-white transition-colors"
+                    >
+                        <span>↗</span>
+                        View Site
+                    </Link>
+                    <form action="/api/admin/logout" method="POST">
+                        <button
+                            type="submit"
+                            style={{ color: "#6b7280" }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-red-400 transition-colors"
+                        >
+                            <span>→</span>
+                            Sign Out
+                        </button>
+                    </form>
+                </div>
+            </aside>
+
+            {/* Main */}
+            <main className="flex-1 p-8 overflow-auto">
+                {children}
+            </main>
+        </div>
+    );
+}

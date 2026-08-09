@@ -1,28 +1,17 @@
 import Image from "next/image";
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "next-sanity";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PortableText } from "@portabletext/react";
-import { urlFor } from "@/sanity/lib/image";
 import type { Metadata } from "next";
+import { getArticleBySlug, getAllArticleSlugs } from "@/lib/supabase/queries";
 import { generatePageMetadata } from "@/lib/metadata";
-import { client } from "@/sanity/lib/client";
 import JsonLd from "@/components/JsonLd";
 
-const ARTICLE_BY_SLUG_QUERY = defineQuery(`
-  *[_type == "article" && slug.current == $slug][0] {
-    _id,
-    title,
-    slug,
-    section,
-    publishedAt,
-    "author": author->name,
-    "authorPhoto": author->photo,
-    featuredImage,
-    body,
-    faqs
-  }
-`);
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+    const slugs = await getAllArticleSlugs();
+    return slugs.map((s) => ({ slug: s.slug }));
+}
 
 export async function generateMetadata({
     params,
@@ -30,22 +19,13 @@ export async function generateMetadata({
     params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
     const { slug } = await params;
-    const article = await client.fetch(ARTICLE_BY_SLUG_QUERY, { slug });
-
-    if (!article) {
-        return generatePageMetadata({
-            title: "Article Not Found",
-            description: "This article could not be found.",
-        });
-    }
-
+    const article = await getArticleBySlug(slug);
+    if (!article) return generatePageMetadata({ title: "Article Not Found", description: "This article could not be found." });
     return generatePageMetadata({
-        title: article.title ?? "Article",
-        description: `Read ${article.title} on ToolsAQ — honest guides and reviews for developers.`,
+        title: article.title,
+        description: article.excerpt ?? `Read ${article.title} on ToolsAQ.`,
         path: `/blog/${slug}`,
-        ogImage: article.featuredImage
-            ? urlFor(article.featuredImage).width(1200).height(630).url()
-            : undefined,
+        ogImage: article.featured_image_url ?? undefined,
     });
 }
 
@@ -55,12 +35,12 @@ export default async function ArticlePage({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
-    const { data: article } = await sanityFetch({
-        query: ARTICLE_BY_SLUG_QUERY,
-        params: { slug },
-    });
-
+    const article = await getArticleBySlug(slug);
     if (!article) return notFound();
+
+    const faqs = Array.isArray(article.faqs)
+        ? article.faqs as { question: string; answer: string }[]
+        : [];
 
     const articleSchema = {
         "@context": "https://schema.org",
@@ -68,46 +48,58 @@ export default async function ArticlePage({
         headline: article.title,
         author: {
             "@type": "Person",
-            name: article.author ?? "ToolsAQ Team",
+            name: article.author?.name ?? "ToolsAQ Team",
         },
         publisher: {
             "@type": "Organization",
             name: "ToolsAQ",
             url: "https://toolsaq.com",
         },
-        datePublished: article.publishedAt,
-        dateModified: article.publishedAt,
-        image: article.featuredImage
-            ? urlFor(article.featuredImage).width(1200).height(630).url()
-            : "https://toolsaq.com/og-image.png",
+        datePublished: article.published_at,
+        dateModified: article.updated_at,
+        image: article.featured_image_url ?? "https://toolsaq.com/og-image.png",
         url: `https://toolsaq.com/blog/${slug}`,
+        description: article.excerpt,
     };
 
-    const faqSchema = article.faqs?.length
-        ? {
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: article.faqs.map(
-                (faq: { question?: string; answer?: string }) => ({
-                    "@type": "Question",
-                    name: faq.question,
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: faq.answer,
-                    },
-                })
-            ),
-        }
-        : null;
+    const faqSchema = faqs.length ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: { "@type": "Answer", text: faq.answer },
+        })),
+    } : null;
+
+    const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://toolsaq.com" },
+            { "@type": "ListItem", position: 2, name: "Blog", item: "https://toolsaq.com/blog" },
+            { "@type": "ListItem", position: 3, name: article.title, item: `https://toolsaq.com/blog/${slug}` },
+        ],
+    };
 
     return (
         <main style={{ backgroundColor: "#ffffff" }}>
             <JsonLd data={articleSchema} />
+            <JsonLd data={breadcrumbSchema} />
             {faqSchema && <JsonLd data={faqSchema} />}
 
             {/* Hero */}
             <section style={{ backgroundColor: "#0a0a0a" }} className="px-4 py-10">
                 <div className="max-w-3xl mx-auto">
+                    {/* Breadcrumb */}
+                    <nav className="flex items-center gap-2 text-xs mb-6" style={{ color: "#6b7280" }}>
+                        <Link href="/" className="hover:text-white transition-colors">Home</Link>
+                        <span>/</span>
+                        <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
+                        <span>/</span>
+                        <span style={{ color: "#d1d5db" }} className="truncate max-w-xs">{article.title}</span>
+                    </nav>
+
                     {article.section && (
                         <span
                             style={{ backgroundColor: "#1f2937", color: "#9ca3af" }}
@@ -120,21 +112,21 @@ export default async function ArticlePage({
                         {article.title}
                     </h1>
                     <div className="flex items-center gap-3 mt-4">
-                        {article.authorPhoto && (
+                        {article.author?.photo_url && (
                             <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                                 <Image
-                                    src={urlFor(article.authorPhoto).width(64).height(64).url()}
-                                    alt={article.author ?? ""}
+                                    src={article.author.photo_url}
+                                    alt={article.author.name}
                                     fill
                                     className="object-cover"
                                 />
                             </div>
                         )}
                         <div style={{ color: "#9ca3af" }} className="text-sm flex gap-3">
-                            {article.author && <span>By {article.author}</span>}
-                            {article.publishedAt && (
+                            {article.author && <span>By {article.author.name}</span>}
+                            {article.published_at && (
                                 <span>
-                                    {new Date(article.publishedAt).toLocaleDateString("en-GB", {
+                                    {new Date(article.published_at).toLocaleDateString("en-GB", {
                                         day: "numeric",
                                         month: "long",
                                         year: "numeric",
@@ -147,12 +139,12 @@ export default async function ArticlePage({
             </section>
 
             {/* Featured Image */}
-            {article.featuredImage && (
+            {article.featured_image_url && (
                 <div className="max-w-3xl mx-auto px-4 mt-8">
                     <div className="relative w-full h-64 rounded-lg overflow-hidden">
                         <Image
-                            src={urlFor(article.featuredImage).width(1200).height(600).url()}
-                            alt={article.title ?? ""}
+                            src={article.featured_image_url}
+                            alt={article.title}
                             fill
                             className="object-cover"
                         />
@@ -167,76 +159,71 @@ export default async function ArticlePage({
                         <div
                             className="prose max-w-none text-sm leading-relaxed"
                             style={{ color: "#374151" }}
-                        >
-                            <PortableText
-                                value={article.body}
-                                components={{
-                                    marks: {
-                                        link: ({ children, value }) => {
-                                            const href = value?.href ?? "";
-                                            const isExternal = href.startsWith("http");
-                                            return (
-                                                <a
-                                                    href={href}
-                                                    target={isExternal ? "_blank" : "_self"}
-                                                    rel={isExternal ? "noopener noreferrer" : undefined}
-                                                    style={{ color: "#2563eb" }}
-                                                    className="hover:underline"
-                                                >
-                                                    {children}
-                                                </a>
-                                            );
-                                        },
-                                    },
-                                    types: {
-                                        image: ({ value }) => {
-                                            if (!value?.asset) return null;
-                                            return (
-                                                <div className="my-6 rounded-lg overflow-hidden">
-                                                    <img
-                                                        src={urlFor(value).width(800).url()}
-                                                        alt={value.alt ?? ""}
-                                                        className="w-full h-auto"
-                                                    />
-                                                </div>
-                                            );
-                                        },
-                                    },
-                                }}
-                            />
-                        </div>
+                            dangerouslySetInnerHTML={{ __html: article.body }}
+                        />
                     </div>
                 </section>
             )}
 
             {/* FAQs */}
-            {article.faqs?.length ? (
+            {faqs.length > 0 && (
                 <section style={{ backgroundColor: "#f9fafb" }} className="px-4 py-10">
                     <div className="max-w-3xl mx-auto">
                         <h2 style={{ color: "#111827" }} className="text-xl font-bold mb-6">
                             Frequently Asked Questions
                         </h2>
                         <div className="space-y-4">
-                            {article.faqs.map(
-                                (faq: { question?: string; answer?: string }, i: number) => (
-                                    <div
-                                        key={i}
-                                        style={{ border: "1px solid #e5e7eb", backgroundColor: "#ffffff" }}
-                                        className="rounded-lg p-5"
-                                    >
-                                        <p style={{ color: "#111827" }} className="font-semibold text-sm">
-                                            {faq.question}
-                                        </p>
-                                        <p style={{ color: "#6b7280" }} className="text-sm mt-2 leading-relaxed">
-                                            {faq.answer}
-                                        </p>
-                                    </div>
-                                )
-                            )}
+                            {faqs.map((faq, i) => (
+                                <div
+                                    key={i}
+                                    style={{ border: "1px solid #e5e7eb", backgroundColor: "#ffffff" }}
+                                    className="rounded-lg p-5"
+                                >
+                                    <p style={{ color: "#111827" }} className="font-semibold text-sm">
+                                        {faq.question}
+                                    </p>
+                                    <p style={{ color: "#6b7280" }} className="text-sm mt-2 leading-relaxed">
+                                        {faq.answer}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </section>
-            ) : null}
+            )}
+
+            {/* Author bio */}
+            {article.author && (
+                <section style={{ backgroundColor: "#ffffff" }} className="px-4 py-10">
+                    <div className="max-w-3xl mx-auto">
+                        <div
+                            style={{ border: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}
+                            className="rounded-lg p-5 flex items-start gap-4"
+                        >
+                            {article.author.photo_url && (
+                                <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                                    <Image
+                                        src={article.author.photo_url}
+                                        alt={article.author.name}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <p style={{ color: "#111827" }} className="font-semibold text-sm">
+                                    {article.author.name}
+                                </p>
+                                {article.author.bio && (
+                                    <p style={{ color: "#6b7280" }} className="text-xs mt-1 leading-relaxed">
+                                        {article.author.bio}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            )}
         </main>
     );
 }

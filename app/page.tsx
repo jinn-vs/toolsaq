@@ -1,45 +1,20 @@
 import Link from "next/link";
-import { sanityFetch } from "@/sanity/lib/live";
-import { ALL_SOFTWARE_QUERY, ALL_CATEGORIES_QUERY } from "@/sanity/lib/queries";
-import { defineQuery } from "next-sanity";
-import ToolLogo from "@/components/ToolLogo";
+import Image from "next/image";
+import { getAllCategories, getFeaturedTools, getLatestArticles } from "@/lib/supabase/queries";
+import JsonLd from "@/components/JsonLd";
 
-const LATEST_ARTICLES_QUERY = defineQuery(`
-  *[_type == "article"] | order(publishedAt desc) [0...3] {
-    _id,
-    title,
-    slug,
-    section,
-    publishedAt,
-    "author": author->name,
-  }
-`);
-
-const FEATURED_TOOLS_QUERY = defineQuery(`
-  *[_type == "software"] | order(_createdAt desc) [0...6] {
-    _id,
-    name,
-    slug,
-    tagline,
-    logo,
-    "category": category->name
-  }
-`);
+export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [
-    { data: tools },
-    { data: categories },
-    { data: articles },
-  ] = await Promise.all([
-    sanityFetch({ query: FEATURED_TOOLS_QUERY }),
-    sanityFetch({ query: ALL_CATEGORIES_QUERY }),
-    sanityFetch({ query: LATEST_ARTICLES_QUERY }),
+  const [tools, categories, articles] = await Promise.all([
+    getFeaturedTools(),
+    getAllCategories(),
+    getLatestArticles(3),
   ]);
 
   return (
     <main>
-      {/* Hero — black background */}
+      {/* Hero */}
       <section style={{ backgroundColor: "#0a0a0a" }} className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-black text-white mb-4 leading-tight">
@@ -54,8 +29,8 @@ export default async function HomePage() {
           <div className="flex flex-wrap gap-2 mb-8">
             {categories.slice(0, 5).map((cat) => (
               <Link
-                key={cat._id}
-                href={`/category/${cat.slug?.current}`}
+                key={cat.id}
+                href={`/category/${cat.slug}`}
                 style={{
                   backgroundColor: "#1f2937",
                   color: "#d1d5db",
@@ -78,10 +53,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/blog"
-              style={{
-                border: "1px solid #374151",
-                color: "#ffffff",
-              }}
+              style={{ border: "1px solid #374151", color: "#ffffff" }}
               className="text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
             >
               Read Blog
@@ -90,7 +62,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Tools — white background */}
+      {/* Featured Tools */}
       {tools.length > 0 && (
         <section style={{ backgroundColor: "#ffffff" }} className="py-14 px-4">
           <div className="max-w-6xl mx-auto">
@@ -112,38 +84,41 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {tools.map((tool: {
-                _id: string;
-                name?: string;
-                slug?: { current?: string };
-                tagline?: string;
-                logo?: object;
-                category?: string;
-              }) => (
+              {tools.map((tool) => (
                 <Link
-                  key={tool._id}
-                  href={`/tools/${tool.slug?.current}`}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e5e7eb",
-                  }}
+                  key={tool.id}
+                  href={`/tools/${tool.slug}`}
+                  style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb" }}
                   className="rounded-lg p-4 hover:shadow-md transition-shadow block"
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <ToolLogo logo={tool.logo} name={tool.name ?? ""} size={40} />
+                    {tool.logo_url ? (
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-white flex-shrink-0 border border-gray-100">
+                        <Image
+                          src={tool.logo_url}
+                          alt={tool.name}
+                          fill
+                          className="object-contain p-1"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={{ backgroundColor: "#f3f4f6", color: "#6b7280" }}
+                        className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0"
+                      >
+                        {tool.name.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <h3 style={{ color: "#111827" }} className="font-semibold text-sm">
                         {tool.name}
                       </h3>
                       {tool.category && (
                         <span
-                          style={{
-                            backgroundColor: "#f3f4f6",
-                            color: "#6b7280",
-                          }}
+                          style={{ backgroundColor: "#f3f4f6", color: "#6b7280" }}
                           className="text-xs px-2 py-0.5 rounded-full"
                         >
-                          {tool.category}
+                          {tool.category.name}
                         </span>
                       )}
                     </div>
@@ -160,7 +135,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Categories — light gray background */}
+      {/* Categories */}
       {categories.length > 0 && (
         <section style={{ backgroundColor: "#f9fafb" }} className="py-14 px-4">
           <div className="max-w-6xl mx-auto">
@@ -179,12 +154,9 @@ export default async function HomePage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {categories.slice(0, 8).map((cat) => (
                 <Link
-                  key={cat._id}
-                  href={`/category/${cat.slug?.current}`}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e5e7eb",
-                  }}
+                  key={cat.id}
+                  href={`/category/${cat.slug}`}
+                  style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb" }}
                   className="rounded-lg p-4 hover:shadow-md transition-shadow block"
                 >
                   <h3 style={{ color: "#111827" }} className="font-semibold text-sm">
@@ -205,7 +177,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Latest Articles — white background */}
+      {/* Latest Articles */}
       {articles.length > 0 && (
         <section style={{ backgroundColor: "#ffffff" }} className="py-14 px-4">
           <div className="max-w-6xl mx-auto">
@@ -222,42 +194,44 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {articles.map((article: {
-                _id: string;
-                title?: string;
-                slug?: { current?: string };
-                section?: string;
-                publishedAt?: string;
-                author?: string;
-              }) => (
+              {articles.map((article) => (
                 <Link
-                  key={article._id}
-                  href={`/blog/${article.slug?.current}`}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e5e7eb",
-                  }}
-                  className="rounded-lg p-5 hover:shadow-md transition-shadow block"
+                  key={article.id}
+                  href={`/blog/${article.slug}`}
+                  style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb" }}
+                  className="rounded-lg overflow-hidden hover:shadow-md transition-shadow block"
                 >
-                  {article.section && (
-                    <span style={{ color: "#2563eb" }} className="text-xs font-semibold uppercase tracking-wide">
-                      {article.section}
-                    </span>
+                  {article.featured_image_url && (
+                    <div className="relative w-full h-40">
+                      <Image
+                        src={article.featured_image_url}
+                        alt={article.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                   )}
-                  <h3 style={{ color: "#111827" }} className="font-semibold mt-1 text-sm leading-snug">
-                    {article.title}
-                  </h3>
-                  <div style={{ color: "#9ca3af" }} className="text-xs mt-2 flex gap-2">
-                    {article.author && <span>By {article.author}</span>}
-                    {article.publishedAt && (
-                      <span>
-                        {new Date(article.publishedAt).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                  <div className="p-4">
+                    {article.section && (
+                      <span style={{ color: "#2563eb" }} className="text-xs font-semibold uppercase tracking-wide">
+                        {article.section}
                       </span>
                     )}
+                    <h3 style={{ color: "#111827" }} className="font-semibold mt-1 text-sm leading-snug">
+                      {article.title}
+                    </h3>
+                    <div style={{ color: "#9ca3af" }} className="text-xs mt-2 flex items-center gap-2">
+                      {article.author && <span>By {article.author.name}</span>}
+                      {article.published_at && (
+                        <span>
+                          {new Date(article.published_at).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -266,7 +240,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* About blurb — light gray */}
+      {/* About blurb */}
       <section style={{ backgroundColor: "#f9fafb" }} className="py-14 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 style={{ color: "#111827" }} className="text-2xl font-bold mb-4">
@@ -284,7 +258,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* FAQ — white background */}
+      {/* FAQ */}
       <section style={{ backgroundColor: "#ffffff" }} className="py-14 px-4">
         <div className="max-w-3xl mx-auto">
           <p style={{ color: "#6b7280" }} className="text-xs font-semibold uppercase tracking-widest text-center mb-2">
@@ -293,40 +267,27 @@ export default async function HomePage() {
           <h2 style={{ color: "#111827" }} className="text-2xl font-bold text-center mb-8">
             Frequently Asked Questions
           </h2>
+          <JsonLd data={{
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: [
+              { "@type": "Question", name: "What is ToolsAQ?", acceptedAnswer: { "@type": "Answer", text: "ToolsAQ is a free directory of AI and developer tools. We provide honest reviews, comparisons, and guides to help you find the right tool faster." } },
+              { "@type": "Question", name: "Do I need to sign up?", acceptedAnswer: { "@type": "Answer", text: "No. ToolsAQ is completely free to use — no account required." } },
+              { "@type": "Question", name: "How do you make money?", acceptedAnswer: { "@type": "Answer", text: "We earn through affiliate partnerships and sponsored listings. Our editorial content is always independent and unbiased." } },
+              { "@type": "Question", name: "Can I submit my tool?", acceptedAnswer: { "@type": "Answer", text: "Yes! Use the Contact page to get in touch and we will review your submission." } },
+            ]
+          }} />
           <div className="space-y-4">
             {[
-              {
-                q: "What is ToolsAQ?",
-                a: "ToolsAQ is a free directory of AI and developer tools. We provide honest reviews, comparisons, and guides to help you find the right tool faster.",
-              },
-              {
-                q: "Do I need to sign up?",
-                a: "No. ToolsAQ is completely free to use — no account required. Just browse, compare, and find the tools you need.",
-              },
-              {
-                q: "How do you make money?",
-                a: "We earn through affiliate partnerships and sponsored listings. Our editorial content is always independent and unbiased.",
-              },
-              {
-                q: "Can I submit my tool?",
-                a: "Yes! Use the Contact page to get in touch and we will review your submission.",
-              },
-              {
-                q: "How often is the tool list updated?",
-                a: "We update our listings regularly to ensure you always have access to the latest and best tools available.",
-              },
+              { q: "What is ToolsAQ?", a: "ToolsAQ is a free directory of AI and developer tools. We provide honest reviews, comparisons, and guides to help you find the right tool faster." },
+              { q: "Do I need to sign up?", a: "No. ToolsAQ is completely free to use — no account required. Just browse, compare, and find the tools you need." },
+              { q: "How do you make money?", a: "We earn through affiliate partnerships and sponsored listings. Our editorial content is always independent and unbiased." },
+              { q: "Can I submit my tool?", a: "Yes! Use the Contact page to get in touch and we will review your submission." },
+              { q: "How often is the tool list updated?", a: "We update our listings regularly to ensure you always have access to the latest and best tools available." },
             ].map((faq, i) => (
-              <div
-                key={i}
-                style={{ border: "1px solid #e5e7eb" }}
-                className="rounded-lg p-5"
-              >
-                <p style={{ color: "#111827" }} className="font-semibold text-sm">
-                  {faq.q}
-                </p>
-                <p style={{ color: "#6b7280" }} className="text-sm mt-2 leading-relaxed">
-                  {faq.a}
-                </p>
+              <div key={i} style={{ border: "1px solid #e5e7eb" }} className="rounded-lg p-5">
+                <p style={{ color: "#111827" }} className="font-semibold text-sm">{faq.q}</p>
+                <p style={{ color: "#6b7280" }} className="text-sm mt-2 leading-relaxed">{faq.a}</p>
               </div>
             ))}
           </div>

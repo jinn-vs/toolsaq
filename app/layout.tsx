@@ -1,7 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SanityLive } from "@/sanity/lib/live";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
@@ -28,8 +27,7 @@ const websiteSchema = {
   "@type": "WebSite",
   name: "ToolsAQ",
   url: "https://toolsaq.com",
-  description:
-    "Discover, compare and review the best AI and developer tools.",
+  description: "Discover, compare and review the best AI and developer tools.",
   potentialAction: {
     "@type": "SearchAction",
     target: {
@@ -55,7 +53,6 @@ export default function RootLayout({
         <Header />
         <div className="flex-1">{children}</div>
         <Footer />
-        <SanityLive />
       </body>
     </html>
   );
