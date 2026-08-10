@@ -2,12 +2,12 @@ import React from "react";
 import Link from "next/link";
 
 const navItems = [
-    { label: "Dashboard", href: "/admin/dashboard", icon: "◈" },
-    { label: "Tools", href: "/admin/dashboard/tools", icon: "⚙" },
-    { label: "Articles", href: "/admin/dashboard/articles", icon: "✍" },
-    { label: "Categories", href: "/admin/dashboard/categories", icon: "◉" },
-    { label: "Authors", href: "/admin/dashboard/authors", icon: "👤" },
-    { label: "Comparisons", href: "/admin/dashboard/comparisons", icon: "⇄" },
+    { label: "Dashboard", href: "/admin/dashboard" },
+    { label: "Tools", href: "/admin/dashboard/tools" },
+    { label: "Articles", href: "/admin/dashboard/articles" },
+    { label: "Categories", href: "/admin/dashboard/categories" },
+    { label: "Authors", href: "/admin/dashboard/authors" },
+    { label: "Comparisons", href: "/admin/dashboard/comparisons" },
 ];
 
 export default function AdminLayout({

@@ -27,6 +27,7 @@ export default function AuthorsAdminPage() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [form, setForm] = useState({ name: '', slug: '', bio: '', photo_url: '' })
     const [showForm, setShowForm] = useState(false)
+    const [successMsg, setSuccessMsg] = useState('')
 
     async function fetchAuthors() {
         const res = await fetch('/api/authors')
@@ -41,6 +42,7 @@ export default function AuthorsAdminPage() {
         setForm({ name: '', slug: '', bio: '', photo_url: '' })
         setEditingId(null)
         setShowForm(false)
+        setSuccessMsg('')
     }
 
     function handleNameChange(name: string) {
@@ -54,9 +56,15 @@ export default function AuthorsAdminPage() {
             formData.append('file', file)
             const res = await fetch('/api/upload', { method: 'POST', body: formData })
             const { url } = await res.json()
-            if (url) setForm((f) => ({ ...f, photo_url: url }))
+            if (url) {
+                setForm((f) => ({ ...f, photo_url: url }))
+                setSuccessMsg('Photo uploaded! Click Save to apply.')
+            } else {
+                setSuccessMsg('Upload failed — try again.')
+            }
         } catch (err) {
             console.error('Upload failed:', err)
+            setSuccessMsg('Upload failed.')
         } finally {
             setUploading(false)
         }
@@ -66,22 +74,30 @@ export default function AuthorsAdminPage() {
         if (!form.name || !form.slug) return
         setSaving(true)
 
+        const payload = {
+            name: form.name,
+            slug: form.slug,
+            bio: form.bio || null,
+            photo_url: form.photo_url || null,
+        }
+
         if (editingId) {
             await fetch('/api/authors', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: editingId, ...form }),
+                body: JSON.stringify({ id: editingId, ...payload }),
             })
         } else {
             await fetch('/api/authors', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
+                body: JSON.stringify(payload),
             })
         }
 
         await fetchAuthors()
-        resetForm()
+        setSuccessMsg(editingId ? '✓ Author updated successfully!' : '✓ Author created successfully!')
+        setTimeout(() => resetForm(), 1500)
         setSaving(false)
     }
 
@@ -104,6 +120,7 @@ export default function AuthorsAdminPage() {
         })
         setEditingId(author.id)
         setShowForm(true)
+        setSuccessMsg('')
     }
 
     return (
@@ -128,6 +145,19 @@ export default function AuthorsAdminPage() {
                     <h2 className="text-white font-semibold mb-4">
                         {editingId ? 'Edit Author' : 'New Author'}
                     </h2>
+
+                    {successMsg && (
+                        <div
+                            style={{
+                                backgroundColor: successMsg.startsWith('✓') ? '#14532d' : '#7f1d1d',
+                                color: successMsg.startsWith('✓') ? '#86efac' : '#fca5a5',
+                            }}
+                            className="text-xs px-4 py-2.5 rounded-lg mb-4"
+                        >
+                            {successMsg}
+                        </div>
+                    )}
+
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -177,7 +207,7 @@ export default function AuthorsAdminPage() {
                                 Photo
                             </label>
                             <div className="flex items-center gap-4">
-                                {form.photo_url && (
+                                {form.photo_url ? (
                                     <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
                                         <Image
                                             src={form.photo_url}
@@ -186,29 +216,38 @@ export default function AuthorsAdminPage() {
                                             className="object-cover"
                                         />
                                     </div>
+                                ) : (
+                                    <div
+                                        style={{ backgroundColor: '#1f2937', border: '2px dashed #374151' }}
+                                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                                    >
+                                        <span style={{ color: '#6b7280' }} className="text-lg">👤</span>
+                                    </div>
                                 )}
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0]
-                                        if (file) handlePhotoUpload(file)
-                                    }}
-                                    style={{ color: '#9ca3af' }}
-                                    className="text-sm"
-                                />
-                                {uploading && (
-                                    <span style={{ color: '#6b7280' }} className="text-xs">
-                                        Uploading...
-                                    </span>
-                                )}
+                                <div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) handlePhotoUpload(file)
+                                        }}
+                                        style={{ color: '#9ca3af' }}
+                                        className="text-sm"
+                                    />
+                                    {uploading && (
+                                        <p style={{ color: '#6b7280' }} className="text-xs mt-1">
+                                            Uploading...
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
                         <div className="flex gap-3">
                             <button
                                 onClick={handleSave}
-                                disabled={saving}
+                                disabled={saving || uploading}
                                 style={{ backgroundColor: '#2563eb' }}
                                 className="px-5 py-2.5 rounded-lg text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
                             >
