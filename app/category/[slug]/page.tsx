@@ -69,14 +69,7 @@ export default async function CategoryPage({
                         <span>/</span>
                         <span style={{ color: "#d1d5db" }}>{category.name}</span>
                     </nav>
-                    {/* Breadcrumb */}
-                    <nav className="flex items-center gap-2 text-xs mb-6" style={{ color: "#6b7280" }}>
-                        <Link href="/" className="hover:text-white transition-colors">Home</Link>
-                        <span>/</span>
-                        <Link href="/category" className="hover:text-white transition-colors">Categories</Link>
-                        <span>/</span>
-                        <span style={{ color: "#d1d5db" }}>{category.name}</span>
-                    </nav>
+
                     <h1 className="text-3xl font-bold text-white">{category.name}</h1>
                     {category.description && (
                         <p style={{ color: "#9ca3af" }} className="mt-2 text-sm max-w-2xl">
