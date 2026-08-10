@@ -1,78 +1,138 @@
-import { createClient } from "@supabase/supabase-js";
-import Link from "next/link";
+'use client'
 
-// Force Next.js to render this page dynamically on every request (SSR)
-export const dynamic = "force-dynamic";
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 
-interface PageProps {
-    params: {
-        id: string;
-    };
+type Category = {
+    id: string
+    name: string
+    slug: string
+    description: string | null
 }
 
-interface Category {
-    id: string;
-    name?: string;
-    slug?: string;
-    created_at?: string;
-}
+export default function EditCategoryPage() {
+    const router = useRouter()
+    const params = useParams()
+    const id = params.id as string
 
-export default async function CategoryPage({ params }: PageProps) {
-    const { id } = params;
+    const [saving, setSaving] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [form, setForm] = useState({
+        name: '',
+        slug: '',
+        description: '',
+    })
 
-    let categoryData: Category = {
-        id,
-        name: "Category Not Found",
-    };
-
-    try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-        const { data, error } = await supabase
-            .from("categories")
-            .select("*")
-            .eq("id", id)
-            .single();
-
-        if (!error && data) {
-            categoryData = data;
+    useEffect(() => {
+        async function load() {
+            const res = await fetch('/api/categories')
+            const categories = await res.json()
+            const category = categories.find((c: Category) => c.id === id)
+            if (category) {
+                setForm({
+                    name: category.name ?? '',
+                    slug: category.slug ?? '',
+                    description: category.description ?? '',
+                })
+            }
+            setLoading(false)
         }
-    } catch (err) {
-        console.error("Server-side fetch error (Category):", err);
+        load()
+    }, [id])
+
+    async function handleSave() {
+        if (!form.name || !form.slug) return
+        setSaving(true)
+
+        const res = await fetch('/api/categories', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, ...form }),
+        })
+
+        if (res.ok) {
+            router.push('/admin/dashboard/categories')
+        } else {
+            setSaving(false)
+        }
+    }
+
+    const inputClass = "w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:border-blue-500 transition-colors"
+    const inputStyle = { backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }
+    const labelStyle = { color: '#9ca3af' }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <p style={{ color: '#6b7280' }} className="text-sm">Loading...</p>
+            </div>
+        )
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
-                <h1 className="text-2xl font-bold text-gray-800">Category Details</h1>
-                <Link
-                    href="/admin/dashboard/categories"
-                    className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded transition"
-                >
-                    ← Back to Categories
-                </Link>
+        <div className="max-w-2xl">
+            <div className="flex items-center gap-4 mb-8">
+                <button onClick={() => router.back()} style={{ color: '#6b7280' }} className="text-sm hover:text-white">
+                    ← Back
+                </button>
+                <h1 className="text-2xl font-bold text-white">Edit Category</h1>
             </div>
 
-            <div className="bg-white shadow rounded-lg p-6 border space-y-4">
+            <div
+                style={{ backgroundColor: '#111827', border: '1px solid #1f2937' }}
+                className="rounded-xl p-6 space-y-4"
+            >
                 <div>
-                    <span className="text-xs text-gray-400 block uppercase font-mono">ID</span>
-                    <p className="text-sm font-mono text-gray-600">{categoryData.id}</p>
+                    <label style={labelStyle} className="text-xs font-medium block mb-1.5">Name *</label>
+                    <input
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        style={inputStyle}
+                        className={inputClass}
+                    />
                 </div>
 
                 <div>
-                    <span className="text-xs text-gray-400 block uppercase font-mono">Name</span>
-                    <p className="text-lg font-medium text-gray-900">{categoryData.name || "N/A"}</p>
+                    <label style={labelStyle} className="text-xs font-medium block mb-1.5">Slug *</label>
+                    <input
+                        type="text"
+                        value={form.slug}
+                        onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
+                        style={inputStyle}
+                        className={inputClass}
+                    />
                 </div>
 
-                {categoryData.slug && (
-                    <div>
-                        <span className="text-xs text-gray-400 block uppercase font-mono">Slug</span>
-                        <p className="text-sm font-mono text-gray-700">{categoryData.slug}</p>
-                    </div>
-                )}
+                <div>
+                    <label style={labelStyle} className="text-xs font-medium block mb-1.5">Description</label>
+                    <textarea
+                        value={form.description}
+                        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                        rows={3}
+                        style={inputStyle}
+                        className={`${inputClass} resize-none`}
+                    />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        style={{ backgroundColor: '#2563eb' }}
+                        className="px-5 py-2.5 rounded-lg text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {saving ? 'Saving...' : 'Update Category'}
+                    </button>
+                    <button
+                        onClick={() => router.back()}
+                        style={{ border: '1px solid #374151', color: '#9ca3af' }}
+                        className="px-5 py-2.5 rounded-lg text-sm hover:bg-gray-800"
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
-    );
+    )
 }
