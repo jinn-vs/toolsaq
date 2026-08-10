@@ -50,9 +50,8 @@ export default function AdminLayout({
                             key={item.href}
                             href={item.href}
                             style={{ color: "#9ca3af" }}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-white transition-colors"
+                            className="block px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-white transition-colors"
                         >
-                            <span>{item.icon}</span>
                             {item.label}
                         </Link>
                     ))}
@@ -67,18 +66,16 @@ export default function AdminLayout({
                         href="/"
                         target="_blank"
                         style={{ color: "#6b7280" }}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-white transition-colors"
+                        className="block px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-white transition-colors"
                     >
-                        <span>↗</span>
                         View Site
                     </Link>
                     <form action="/api/admin/logout" method="POST">
                         <button
                             type="submit"
                             style={{ color: "#6b7280" }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-red-400 transition-colors"
+                            className="w-full px-3 py-2.5 rounded-lg text-sm hover:bg-gray-800 hover:text-red-400 transition-colors"
                         >
-                            <span>→</span>
                             Sign Out
                         </button>
                     </form>
