@@ -7,7 +7,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { generatePageMetadata } from "@/lib/metadata";
 import JsonLd from "@/components/JsonLd";
 
-export const revalidate = 0;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
     const categories = await getAllCategories();
