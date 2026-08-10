@@ -1,20 +1,55 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getAllComparisons } from "@/lib/supabase/queries";
+import { adminClient } from "@/lib/supabase/admin";
 import { generatePageMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import ToolsSearch from "@/components/ToolsSearch";
+import { Suspense } from "react";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = generatePageMetadata({
     title: "Compare AI & Developer Tools",
-    description: "Side-by-side comparisons of popular AI and developer tools. Find the best tool for your needs.",
+    description: "Side-by-side comparisons of popular AI and developer tools.",
     path: "/compare/all",
 });
 
-export default async function ComparisonsPage() {
-    const comparisons = await getAllComparisons();
+type SearchParams = {
+    q?: string;
+};
+
+export default async function ComparisonsPage({
+    searchParams,
+}: {
+    searchParams: Promise<SearchParams>;
+}) {
+    const { q } = await searchParams;
+
+    let query = adminClient
+        .from("comparisons")
+        .select(`
+      *,
+      tool_a:tools!comparisons_tool_a_id_fkey(id, name, slug, logo_url),
+      tool_b:tools!comparisons_tool_b_id_fkey(id, name, slug, logo_url)
+    `)
+        .eq("is_published", true)
+        .order("published_at", { ascending: false });
+
+    const { data: allComparisons } = await query;
+
+    // Client side filter on tool names (server me joined data pe filter)
+    const comparisons = q
+        ? allComparisons?.filter((comp) => {
+            const toolA = comp.tool_a as { name: string } | null;
+            const toolB = comp.tool_b as { name: string } | null;
+            const search = q.toLowerCase();
+            return (
+                toolA?.name.toLowerCase().includes(search) ||
+                toolB?.name.toLowerCase().includes(search)
+            );
+        })
+        : allComparisons;
 
     const breadcrumbSchema = {
         "@context": "https://schema.org",
@@ -33,23 +68,40 @@ export default async function ComparisonsPage() {
             <section style={{ backgroundColor: "#0a0a0a" }} className="px-4 py-12">
                 <div className="max-w-6xl mx-auto">
                     <h1 className="text-3xl font-bold text-white mb-2">Compare Tools</h1>
-                    <p style={{ color: "#9ca3af" }} className="text-sm">
+                    <p style={{ color: "#9ca3af" }} className="text-sm mb-6">
                         Side-by-side comparisons of popular AI and developer tools.
                     </p>
+                    {/* Search bar */}
+                    <div className="max-w-md">
+                        <Suspense>
+                            <ToolsSearch placeholder="Search by tool name..." />
+                        </Suspense>
+                    </div>
                 </div>
             </section>
 
             <section className="px-4 py-10">
                 <div className="max-w-6xl mx-auto">
-                    {comparisons.length === 0 ? (
-                        <p style={{ color: "#6b7280" }} className="text-sm">
-                            No comparisons published yet.
-                        </p>
+                    {!comparisons || comparisons.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p style={{ color: "#6b7280" }} className="text-sm">
+                                {q ? `No comparisons found for "${q}"` : "No comparisons published yet."}
+                            </p>
+                            {q && (
+                                <Link
+                                    href="/compare/all"
+                                    style={{ color: "#2563eb" }}
+                                    className="text-sm hover:underline mt-2 inline-block"
+                                >
+                                    Clear search
+                                </Link>
+                            )}
+                        </div>
                     ) : (
                         <div className="flex flex-col gap-4">
                             {comparisons.map((comp) => {
-                                const toolA = comp.tool_a as { name: string; slug: string; logo_url: string | null; tagline: string | null } | null
-                                const toolB = comp.tool_b as { name: string; slug: string; logo_url: string | null; tagline: string | null } | null
+                                const toolA = comp.tool_a as { name: string; slug: string; logo_url: string | null } | null;
+                                const toolB = comp.tool_b as { name: string; slug: string; logo_url: string | null } | null;
 
                                 return (
                                     <Link
@@ -108,6 +160,11 @@ export default async function ComparisonsPage() {
                                                     {toolB?.name}
                                                 </span>
                                             </div>
+
+                                            {/* Arrow */}
+                                            <span style={{ color: "#9ca3af" }} className="ml-auto text-sm">
+                                                View →
+                                            </span>
                                         </div>
 
                                         {comp.published_at && (
@@ -120,7 +177,7 @@ export default async function ComparisonsPage() {
                                             </p>
                                         )}
                                     </Link>
-                                )
+                                );
                             })}
                         </div>
                     )}
