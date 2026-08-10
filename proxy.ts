@@ -33,14 +33,12 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // Admin routes protect karein
     if (request.nextUrl.pathname.startsWith('/admin/dashboard')) {
         if (!user) {
             return NextResponse.redirect(new URL('/admin/login', request.url))
         }
     }
 
-    // Agar already logged in hai aur login page pe jaye
     if (request.nextUrl.pathname === '/admin/login') {
         if (user) {
             return NextResponse.redirect(new URL('/admin/dashboard', request.url))
