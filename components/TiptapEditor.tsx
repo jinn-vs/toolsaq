@@ -263,6 +263,20 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
                 >
                     ↪
                 </ToolbarButton>
+                <div style={{ width: '1px', backgroundColor: '#374151' }} className="mx-1" />
+
+                <ToolbarButton
+                    onClick={() => {
+                        const html = window.prompt('Paste HTML content:')
+                        if (html) {
+                            editor.chain().focus().setContent(html).run()
+                        }
+                    }}
+                    active={false}
+                    title="Insert HTML"
+                >
+                    {'</>'}
+                </ToolbarButton>
             </div>
 
             {/* Editor content */}
