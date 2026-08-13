@@ -157,8 +157,7 @@ export default async function ArticlePage({
                 <section className="px-4 py-10">
                     <div className="max-w-3xl mx-auto">
                         <div
-                            className="prose max-w-none text-sm leading-relaxed"
-                            style={{ color: "#374151" }}
+                            className="article-body"
                             dangerouslySetInnerHTML={{ __html: article.body }}
                         />
                     </div>
