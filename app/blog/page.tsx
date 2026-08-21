@@ -13,8 +13,32 @@ export const metadata: Metadata = generatePageMetadata({
     path: "/blog",
 });
 
-export default async function BlogPage() {
-    const articles = await getAllArticles();
+const SECTIONS = [
+    "All",
+    "Guides & Tutorials",
+    "Software Reviews",
+    "Alternatives",
+    "Comparisons",
+];
+
+function readTime(body: string | null): string {
+    if (!body) return "5 min read";
+    const words = body.replace(/<[^>]*>/g, "").split(/\s+/).length;
+    const minutes = Math.max(1, Math.round(words / 200));
+    return `${minutes} min read`;
+}
+
+export default async function BlogPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ section?: string }>;
+}) {
+    const { section } = await searchParams;
+    const allArticles = await getAllArticles();
+
+    const filtered = section && section !== "All"
+        ? allArticles.filter((a) => a.section === section)
+        : allArticles;
 
     const breadcrumbSchema = {
         "@context": "https://schema.org",
@@ -30,33 +54,56 @@ export default async function BlogPage() {
             <JsonLd data={breadcrumbSchema} />
 
             {/* Hero */}
-            <section style={{ backgroundColor: "#0a0a0a" }} className="px-4 py-12">
+            <section style={{ backgroundColor: "#0a0a0a" }} className="px-4 py-14">
                 <div className="max-w-6xl mx-auto">
-                    <h1 className="text-3xl font-bold text-white mb-2">Blog</h1>
-                    <p style={{ color: "#9ca3af" }} className="text-sm">
-                        Guides, reviews, comparisons and more.
+                    <h1 className="text-4xl font-black text-white mb-3">ToolsAQ Magazine</h1>
+                    <p style={{ color: "#9ca3af" }} className="text-sm max-w-2xl">
+                        Expert guides, honest reviews, and practical insights on AI and developer tools.
+                        Everything you need to choose, use, and get the most out of modern tech tools.
                     </p>
                 </div>
             </section>
 
+            {/* Category tabs */}
+            <section style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }} className="px-4 py-3">
+                <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto">
+                    {SECTIONS.map((s) => (
+                        <Link
+                            key={s}
+                            href={s === "All" ? "/blog" : `/blog?section=${encodeURIComponent(s)}`}
+                            style={{
+                                backgroundColor: (section === s || (!section && s === "All")) ? "#111827" : "#ffffff",
+                                color: (section === s || (!section && s === "All")) ? "#ffffff" : "#6b7280",
+                                border: "1px solid #e5e7eb",
+                            }}
+                            className="text-xs px-4 py-2 rounded-full whitespace-nowrap font-medium hover:bg-gray-800 hover:text-white transition-colors"
+                        >
+                            {s}
+                        </Link>
+                    ))}
+                </div>
+            </section>
+
+            {/* Articles */}
             <section className="px-4 py-10">
                 <div className="max-w-6xl mx-auto">
-                    {articles.length === 0 ? (
+                    {filtered.length === 0 ? (
                         <p style={{ color: "#6b7280" }} className="text-sm">
-                            No articles published yet.
+                            No articles in this section yet.
                         </p>
                     ) : (
                         <div className="flex flex-col gap-6">
-                            {articles.map((article) => (
+                            {filtered.map((article) => (
                                 <Link
                                     key={article.id}
                                     href={`/blog/${article.slug}`}
                                     style={{ border: "1px solid #e5e7eb" }}
-                                    className="rounded-lg overflow-hidden hover:shadow-md transition-shadow block"
+                                    className="rounded-xl overflow-hidden hover:shadow-md transition-shadow block"
                                 >
                                     <div className="flex flex-col sm:flex-row">
+                                        {/* Image */}
                                         {article.featured_image_url && (
-                                            <div className="relative w-full sm:w-56 h-48 sm:h-auto flex-shrink-0">
+                                            <div className="relative w-full sm:w-64 h-48 flex-shrink-0">
                                                 <Image
                                                     src={article.featured_image_url}
                                                     alt={article.title}
@@ -65,23 +112,30 @@ export default async function BlogPage() {
                                                 />
                                             </div>
                                         )}
-                                        <div className="p-5 flex flex-col justify-center">
-                                            {article.section && (
-                                                <span style={{ color: "#2563eb" }} className="text-xs font-semibold uppercase tracking-wide">
-                                                    {article.section}
-                                                </span>
-                                            )}
-                                            <h2 style={{ color: "#111827" }} className="text-xl font-semibold mt-1">
-                                                {article.title}
-                                            </h2>
-                                            {article.excerpt && (
-                                                <p style={{ color: "#6b7280" }} className="text-sm mt-2 line-clamp-2">
-                                                    {article.excerpt}
-                                                </p>
-                                            )}
-                                            <div className="flex items-center gap-3 mt-3">
+                                        {/* Content */}
+                                        <div className="p-5 flex flex-col justify-between flex-1">
+                                            <div>
+                                                {article.section && (
+                                                    <span
+                                                        style={{ backgroundColor: "#eff6ff", color: "#2563eb" }}
+                                                        className="text-xs px-3 py-1 rounded-full font-semibold inline-block mb-2"
+                                                    >
+                                                        {article.section}
+                                                    </span>
+                                                )}
+                                                <h2 style={{ color: "#111827" }} className="text-lg font-bold leading-snug mb-2">
+                                                    {article.title}
+                                                </h2>
+                                                {article.excerpt && (
+                                                    <p style={{ color: "#6b7280" }} className="text-sm line-clamp-2 leading-relaxed">
+                                                        {article.excerpt}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {/* Author + date + read time */}
+                                            <div className="flex items-center gap-3 mt-4">
                                                 {article.author?.photo_url && (
-                                                    <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                                                    <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
                                                         <Image
                                                             src={article.author.photo_url}
                                                             alt={article.author.name}
@@ -90,17 +144,26 @@ export default async function BlogPage() {
                                                         />
                                                     </div>
                                                 )}
-                                                <div style={{ color: "#9ca3af" }} className="text-xs flex gap-2">
-                                                    {article.author && <span>By {article.author.name}</span>}
-                                                    {article.published_at && (
-                                                        <span>
-                                                            {new Date(article.published_at).toLocaleDateString("en-GB", {
-                                                                day: "numeric",
-                                                                month: "short",
-                                                                year: "numeric",
-                                                            })}
+                                                <div style={{ color: "#6b7280" }} className="text-xs flex items-center gap-2">
+                                                    {article.author && (
+                                                        <span className="font-medium" style={{ color: "#374151" }}>
+                                                            {article.author.name}
                                                         </span>
                                                     )}
+                                                    {article.published_at && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>
+                                                                {new Date(article.published_at).toLocaleDateString("en-GB", {
+                                                                    day: "numeric",
+                                                                    month: "short",
+                                                                    year: "numeric",
+                                                                })}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                    <span>•</span>
+                                                    <span>{readTime(article.body)}</span>
                                                 </div>
                                             </div>
                                         </div>

@@ -27,6 +27,14 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+.article-body h1 {
+  font-size: 1.875rem;
+  font-weight: 800;
+  margin: 2.5rem 0 1rem;
+  color: #111827;
+  line-height: 1.2;
+}
+
 .article-body h2 {
   font-size: 1.5rem;
   font-weight: 700;
