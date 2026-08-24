@@ -146,6 +146,13 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
 
                 {/* Headings */}
                 <ToolbarButton
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    active={editor.isActive('heading', { level: 1 })}
+                    title="Heading 1"
+                >
+                    H1
+                </ToolbarButton>
+                <ToolbarButton
                     onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
                     active={editor.isActive('heading', { level: 2 })}
                     title="Heading 2"
@@ -159,8 +166,6 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
                 >
                     H3
                 </ToolbarButton>
-
-                <div style={{ width: '1px', backgroundColor: '#374151' }} className="mx-1" />
 
                 {/* Lists */}
                 <ToolbarButton
@@ -279,11 +284,10 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
                 </ToolbarButton>
             </div>
 
-            {/* Editor content */}
+
             <EditorContent
                 editor={editor}
-                className="prose prose-invert max-w-none p-4 min-h-[400px] text-sm focus:outline-none"
-                style={{ color: '#e5e7eb' }}
+                className="tiptap-editor-content p-6 min-h-[500px] focus:outline-none"
             />
         </div>
     )
