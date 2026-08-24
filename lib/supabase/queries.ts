@@ -18,7 +18,7 @@ export async function getCategoryBySlug(slug: string) {
         .eq('slug', slug)
         .single()
 
-    if (error) throw error
+    if (error) return null
     return data
 }
 
