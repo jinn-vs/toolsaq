@@ -243,7 +243,7 @@ export default async function ArticlePage({
 
                     {/* Sidebar — Table of Contents */}
                     <aside className="hidden lg:block w-64 flex-shrink-0">
-                        <div className="sticky top-8">
+                        <div>
                             <TableOfContents html={article.body ?? ""} />
                         </div>
                     </aside>
